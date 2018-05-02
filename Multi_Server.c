@@ -20,7 +20,7 @@ int main(int argc , char *argv[])
 { 
 	int opt = TRUE; 
 	int master_socket , addrlen , new_socket , client_socket[5] , 
-		max_clients = 5 , activity, i , valread , sd; 
+		max_clients = 5 , clients_active = 0, activity, i , valread , sd; 
 	int max_sd; 
 	struct sockaddr_in address; 
 		
@@ -65,7 +65,7 @@ int main(int argc , char *argv[])
 		perror("bind failed"); 
 		exit(EXIT_FAILURE); 
 	} 
-	printf("Listener on port %d", PORT); 
+	printf("Listener on port %d \n", PORT); 
 		
 	//try to specify maximum of 3 pending connections for the master socket 
 	if (listen(master_socket, 3) < 0) 
@@ -141,6 +141,7 @@ int main(int argc , char *argv[])
 				if( client_socket[i] == 0 ) 
 				{ 
 					client_socket[i] = new_socket; 
+					clients_active++;
 					printf("Adding to list of sockets as %d\n" , i); 
 						
 					break; 
@@ -157,7 +158,7 @@ int main(int argc , char *argv[])
 			{ 
 				//Check if it was for closing , and also read the 
 				//incoming message 
-				if ((valread = read( sd , buffer, 1024)) == 0
+				if ((valread = read( sd , buffer, 1024)) == 0) 
 				{ 
 					//Somebody disconnected , get his details and print 
 					getpeername(sd , (struct sockaddr*)&address , \
@@ -167,15 +168,16 @@ int main(int argc , char *argv[])
 					//Close the socket and mark as 0 in list for reuse 
 					close( sd ); 
 					client_socket[i] = 0; 
+					clients_active--;
 				} 
 					
-				//Echo back the message that came in 
+				//We can possibly implement states of the server from here
 				else
 				{ 
 					//set the string terminating NULL byte on the end 
 					//of the data read 
-					buffer[valread] = '\0'; 
-					send(sd , buffer , strlen(buffer) , 0 ); 
+					char *new_message = "You joined the game \0";
+					send(sd , new_message , strlen(new_message) , 0 ); 
 				} 
 			} 
 		} 

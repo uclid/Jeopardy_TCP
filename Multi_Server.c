@@ -13,13 +13,14 @@
 	
 #define TRUE 1 
 #define FALSE 0 
-#define PORT 8888 
+#define PORT 8888
+#define MIN_PLAYERS 3
 	
 int main(int argc , char *argv[]) 
 { 
 	int opt = TRUE; 
-	int master_socket , addrlen , new_socket , client_socket[30] , 
-		max_clients = 30 , activity, i , valread , sd; 
+	int master_socket , addrlen , new_socket , client_socket[5] , 
+		max_clients = 5 , activity, i , valread , sd; 
 	int max_sd; 
 	struct sockaddr_in address; 
 		
@@ -156,7 +157,7 @@ int main(int argc , char *argv[])
 			{ 
 				//Check if it was for closing , and also read the 
 				//incoming message 
-				if ((valread = read( sd , buffer, 1024)) == 0) 
+				if ((valread = read( sd , buffer, 1024)) == 0
 				{ 
 					//Somebody disconnected , get his details and print 
 					getpeername(sd , (struct sockaddr*)&address , \

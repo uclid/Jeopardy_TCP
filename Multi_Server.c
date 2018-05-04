@@ -113,7 +113,8 @@ int main(int argc , char *argv[])
 			
 		//If something happened on the master socket , 
 		//then its an incoming connection 
-		if (FD_ISSET(master_socket, &readfds)) 
+		//added a condition to restrict connections more than max clients at a time
+		if (FD_ISSET(master_socket, &readfds) && clients_active < max_clients) 
 		{ 
 			if ((new_socket = accept(master_socket, 
 					(struct sockaddr *)&address, (socklen_t*)&addrlen))<0) 
@@ -125,11 +126,12 @@ int main(int argc , char *argv[])
 			//inform user of socket number - used in send and receive commands 
 			printf("New connection , socket fd is %d , ip is : %s , port : %d \n" , new_socket , inet_ntoa(address.sin_addr) , ntohs
 				(address.sin_port)); 
+			clients_active++;
 		
 			//send new connection greeting message 
 			if( send(new_socket, message, strlen(message), 0) != strlen(message) ) 
 			{ 
-				perror("send"); 
+				perror("send");
 			} 
 				
 			puts("Welcome message sent successfully"); 
@@ -140,9 +142,8 @@ int main(int argc , char *argv[])
 				//if position is empty 
 				if( client_socket[i] == 0 ) 
 				{ 
-					client_socket[i] = new_socket; 
-					clients_active++;
-					printf("Adding to list of sockets as %d\n" , i); 
+					client_socket[i] = new_socket;
+					printf("Adding to list of sockets as %d\n" , clients_active); 
 						
 					break; 
 				} 
@@ -163,7 +164,7 @@ int main(int argc , char *argv[])
 					//Somebody disconnected , get his details and print 
 					getpeername(sd , (struct sockaddr*)&address , \
 						(socklen_t*)&addrlen); 
-				printf("Host disconnected , ip %s , port %d \n" , inet_ntoa(address.sin_addr) , ntohs(address.sin_port)); 
+					printf("Host disconnected , ip %s , port %d \n" , inet_ntoa(address.sin_addr) , ntohs(address.sin_port)); 
 						
 					//Close the socket and mark as 0 in list for reuse 
 					close( sd ); 
@@ -177,7 +178,7 @@ int main(int argc , char *argv[])
 					//set the string terminating NULL byte on the end 
 					//of the data read 
 					char *new_message = "You joined the game \0";
-					send(sd , new_message , strlen(new_message) , 0 ); 
+					send(sd , new_message , strlen(new_message) , 0 );
 				} 
 			} 
 		} 

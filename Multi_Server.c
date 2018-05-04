@@ -20,7 +20,7 @@ int main(int argc , char *argv[])
 { 
 	int opt = TRUE; 
 	int master_socket , addrlen , new_socket , client_socket[5] , 
-		max_clients = 5 , activity, i , valread , sd; 
+		max_clients = 5 , clients_active = 0, activity, i , valread , sd; 
 	int max_sd; 
 	struct sockaddr_in address; 
 		
@@ -65,7 +65,7 @@ int main(int argc , char *argv[])
 		perror("bind failed"); 
 		exit(EXIT_FAILURE); 
 	} 
-	printf("Listener on port %d", PORT); 
+	printf("Listener on port %d \n", PORT); 
 		
 	//try to specify maximum of 3 pending connections for the master socket 
 	if (listen(master_socket, 3) < 0) 
@@ -113,7 +113,8 @@ int main(int argc , char *argv[])
 			
 		//If something happened on the master socket , 
 		//then its an incoming connection 
-		if (FD_ISSET(master_socket, &readfds)) 
+		//added a condition to restrict connections more than max clients at a time
+		if (FD_ISSET(master_socket, &readfds) && clients_active < max_clients) 
 		{ 
 			if ((new_socket = accept(master_socket, 
 					(struct sockaddr *)&address, (socklen_t*)&addrlen))<0) 
@@ -125,11 +126,12 @@ int main(int argc , char *argv[])
 			//inform user of socket number - used in send and receive commands 
 			printf("New connection , socket fd is %d , ip is : %s , port : %d \n" , new_socket , inet_ntoa(address.sin_addr) , ntohs
 				(address.sin_port)); 
+			clients_active++;
 		
 			//send new connection greeting message 
 			if( send(new_socket, message, strlen(message), 0) != strlen(message) ) 
 			{ 
-				perror("send"); 
+				perror("send");
 			} 
 				
 			puts("Welcome message sent successfully"); 
@@ -140,8 +142,8 @@ int main(int argc , char *argv[])
 				//if position is empty 
 				if( client_socket[i] == 0 ) 
 				{ 
-					client_socket[i] = new_socket; 
-					printf("Adding to list of sockets as %d\n" , i); 
+					client_socket[i] = new_socket;
+					printf("Adding to list of sockets as %d\n" , clients_active); 
 						
 					break; 
 				} 
@@ -157,25 +159,26 @@ int main(int argc , char *argv[])
 			{ 
 				//Check if it was for closing , and also read the 
 				//incoming message 
-				if ((valread = read( sd , buffer, 1024)) == 0
+				if ((valread = read( sd , buffer, 1024)) == 0) 
 				{ 
 					//Somebody disconnected , get his details and print 
 					getpeername(sd , (struct sockaddr*)&address , \
 						(socklen_t*)&addrlen); 
-				printf("Host disconnected , ip %s , port %d \n" , inet_ntoa(address.sin_addr) , ntohs(address.sin_port)); 
+					printf("Host disconnected , ip %s , port %d \n" , inet_ntoa(address.sin_addr) , ntohs(address.sin_port)); 
 						
 					//Close the socket and mark as 0 in list for reuse 
 					close( sd ); 
 					client_socket[i] = 0; 
+					clients_active--;
 				} 
 					
-				//Echo back the message that came in 
+				//We can possibly implement states of the server from here
 				else
 				{ 
 					//set the string terminating NULL byte on the end 
 					//of the data read 
-					buffer[valread] = '\0'; 
-					send(sd , buffer , strlen(buffer) , 0 ); 
+					char *new_message = "You joined the game \0";
+					send(sd , new_message , strlen(new_message) , 0 );
 				} 
 			} 
 		} 

@@ -6,12 +6,18 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #define PORT 8888
 #define TRUE 1 
 #define FALSE 0
+typedef struct {
+char sub_msg[1024];
+} CM_Subscribe;
 
 int main(int argc, char const *argv[])
 {
+	CM_Subscribe message;
 	struct sockaddr_in address;
 	int sock = 0, valread;
 	struct sockaddr_in serv_addr;
@@ -40,7 +46,14 @@ int main(int argc, char const *argv[])
 		printf("\nConnection Failed \n");
 		return -1;
 	}
-	
+	//trying to send cm_subscribe
+        printf("Player name: ");
+        bzero(buffer,sizeof(buffer));
+        fgets(buffer,sizeof(buffer)-1,stdin);
+        printf("CM_Subscribe message will contain : <%s>\n", buffer);
+	strcpy(message.sub_msg,buffer);	
+	send(sock, &message, sizeof(message), 0);
+	//done with CM_Subscribe
 	send(sock , hello , strlen(hello) , 0 );
 	printf("Hello message sent\n");
 	valread = read( sock , buffer, 1024);

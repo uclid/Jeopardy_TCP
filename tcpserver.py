@@ -1,6 +1,7 @@
 import socket
 import threading
 import json
+import random
 
 bind_ip = 'localhost'
 bind_port = 9999
@@ -8,6 +9,27 @@ bind_port = 9999
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((bind_ip, bind_port))
 server.listen(5)  # max backlog of connections
+
+MIN_PLAYERS = 3
+
+player_names = []
+num_categories = 5
+categories = ['Movies','Sportsmen','Capital Cities','US History','Artists']
+ques_in_categories = 2
+questions = [['Best Oscar Movie 2017','Highest Grossing Movie of all time'],
+             ['World Cup 2018 is here','Current NBA Champions'],
+             ['Capital of Nepal','Capital of Bangladesh'],
+             ['The First State','The Last State'],
+             ['Painted Monalisa','Composed Fur Elise']]
+''' 
+answers =
+[['moonlight','avatar'],
+['russia','golden state warriors'],
+['kathmandu','dhaka'],
+['delaware','hawaii'],
+['da vinci','beethoven']]
+'''
+def_timeout = 5000 #3 seconds
 
 print ('Listening on {}:{}'.format(bind_ip, bind_port))
 
@@ -17,8 +39,52 @@ def handle_client_connection(client_socket):
     request = client_socket.recv(1024)
     client_message = json.loads(request.decode())
     print ('Received {}'.format(client_message['name']))
+    
+    player_names.add(client_message['name'])
+    num_players = threading.activeCount() -1
+      
     #game in progress
-    client_socket.send(b'ACK!')
+    while num_players < MIN_PLAYERS:
+        #keep checking active connections
+        num_players = threading.activeCount() -1
+    
+    if num_players >= MIN_PLAYERS:
+        SM_NEW_GAME = { 'num_players' : num_players,
+                    'player_names' : player_names,
+                    'num categories' : num_categories,
+                    'categories' : categories,
+                    'ques_in_categories' : ques_in_categories,
+                    'def_timeout' : def_timeout }
+    
+    message = json.dumps(SM_NEW_GAME)
+    client_socket.send(message.encode())
+    
+    #round in progress
+    selected_player = random.randint(1,num_players+1)
+    SM_NEW_ROUND = {"selected_player" : selected_player}
+    
+    message = json.dumps(SM_NEW_ROUND)
+    client_socket.send(message.encode())
+    
+    #category_selected
+    request = client_socket.recv(1024)
+    client_message = json.loads(request.decode())
+    print ('Received from player {} the category {}'.format(client_message['player_id'],client_message['category_id'])) #getting category from client 
+    category = client_message['category_id'])
+    
+    selected_question = random.randint(1,2)
+    SM_QUESTION = {"selected_question" : questions[category][selected_question]}
+    
+    message = json.dumps(SM_QUESTION)
+    client_socket.send(message.encode())    
+    
+    #waiting for ring
+    
+    
+    
+    #wait for cm answer
+    
+    #end of round
     
     #end game
     client_socket.send(b'END')

@@ -17,14 +17,23 @@ client.send(message.encode())
 # receive the response data (4096 is recommended buffer size)
 response = client.recv(4096)
 
-print (response.decode())
+#print (response.decode())
+#request = client_socket.recv(1024)
+server_message = json.loads(response.decode())
+print ('Received {}'.format(server_message))
+player_id = (server_message['player_names']).index(name) + 1 
+print ('Player ID {}'.format(player_id))
 
 #send CM_Category
-category_id = input('Your Category: ')
-player_id = input('Your Player id:')
-CM_CATEGORY = {'Category ID': category_id, 'Player ID': player_id}
-message1 = json.dumps(CM_CATEGORY)
-client.send(message1.encode())
+response1 = client.recv(4096)
+server_message1 = json.loads(response1.decode())
+selected_id = (server_message1['selected_player'])
+print ('Player {} is selected for this round'.format(selected_id))
+if selected_id == player_id:
+    category_id = input('Your Category: ')
+    CM_CATEGORY = {'Category ID': category_id, 'Player ID': player_id}
+    message1 = json.dumps(CM_CATEGORY)
+    client.send(message1.encode())
 
 #send CM_RING
 player_id = input('Your Player id:')
@@ -37,9 +46,6 @@ player_answer = input('Type in your answer:')
 CM_ANSWER = {'Player Answer': player_answer}
 message3 = json.dumps(CM_RING)
 client.send(message3.encode())
-
-# receive the response data (4096 is recommended buffer size)
-response = client.recv(4096)
 
 endGame = False
 while not endGame:

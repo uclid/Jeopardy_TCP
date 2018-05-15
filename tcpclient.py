@@ -8,7 +8,7 @@ client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # client.connect((target, port))
 client.connect(('localhost', 9999))
 
-# send CM_SUBSCRIBE
+# send CM_SUBSCRIBE in JOINING_GAME state
 name = input('Your name: ')
 CM_SUBSCRIBE = {'name': name}
 message = json.dumps(CM_SUBSCRIBE)
@@ -34,6 +34,12 @@ if selected_id == player_id:
     CM_CATEGORY = {'Category ID': category_id, 'Player ID': player_id}
     message1 = json.dumps(CM_CATEGORY)
     client.send(message1.encode())
+
+response2 = client.recv(4096)
+server_message2 = json.loads(response2.decode())
+selected_question = (server_message2['selected_question'])
+print ('Question selected for this round is {}'.format(selected_question))   
+
 
 #send CM_RING
 player_id = input('Your Player id:')

@@ -45,7 +45,7 @@ while connected == True:
         if(cmd["selected_player"] == player_id):
             print("You are selected!!")
             category = int(input('Please select a category (1,2,3..) in order they are displayed: '))
-            SM_CATEGORY = {'category': category}
+            SM_CATEGORY = {'player_id': player_id,'category': category}
             message = json.dumps(SM_CATEGORY)
             client_socket.send(message.encode())            
         else:
@@ -57,4 +57,11 @@ while connected == True:
         #list_message = decoded.split('\n')
         cmd = json.loads(data.decode()) #we now only expect json
         print("Category selected is {}.".format(SM_NEW_GAME["categories"][cmd["category"]]))
-        xyz = input("please wait for question...")
+        state = 3
+    elif(state == 3):
+        data = client_socket.recv(1024) 
+        #decoded = data.decode()
+        #list_message = decoded.split('\n')
+        cmd = json.loads(data.decode()) #we now only expect json
+        print("Your question is {}.".format([cmd["question"]]))
+        ring = int(input("Please press 1 and enter to ring..."))

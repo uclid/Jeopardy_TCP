@@ -4,6 +4,7 @@ import socket, time, sys
 import threading
 import pprint
 import json
+import random
 
 TCP_IP = 'localhost'
 TCP_PORT = 8888
@@ -58,19 +59,23 @@ class server():
    #client handler :one of these loops is running for each thread/player   
     def playerHandler(self, client_socket):
         #send welcome msg to new client
-        client_socket.send(bytes('{"type": "bet","value": "1"}', 'UTF-8'))
+        client_socket.send(bytes('{"Welcome": "Jeopardy"}', 'UTF-8'))        
         while 1:
-            data = client_socket.recv(BUFFER_SIZE)
-            if not data: 
+            #collect subscriptions
+            request = client_socket.recv(BUFFER_SIZE)            
+            if not request: 
                 break
             #print ('Data : ' + repr(data) + "\n")
             #data = data.decode("UTF-8")
             # broadcast
-            for client in self.CLIENTS.values():
-                client.send(data)
+            client_message = json.loads(request.decode())
+            #print ('Received {}'.format(client_message['name']))            
+            #for client in self.CLIENTS:
+                #client.send(data)
+            self.player_names.append(client_message['name'])
 
          # the connection is closed: unregister
-        self.CLIENTS.remove(client_socket)
+        #sself.CLIENTS.remove(client_socket)
         #client_socket.close() #do we close the socket when the program ends? or for ea client thead?
 
     def broadcast(self, message):
@@ -109,4 +114,7 @@ if __name__ == '__main__':
         s.broadcast(SM_NEW_GAME)
         pprint.pprint(s.CLIENTS)
         print(len(s.CLIENTS)) #print out the number of connected clients every 5s
-        time.sleep(5) 
+        selected_player = random.randint(1,len(s.CLIENTS)+1)
+        SM_NEW_ROUND = {"selected_player" : selected_player}
+        s.broadcast(SM_NEW_ROUND)    
+        time.sleep(5)

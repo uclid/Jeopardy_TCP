@@ -17,12 +17,14 @@ selected_player = 0
 selected_question = 0
 start_time = time.time()
 timed_out = 0
+rounds = 1
 
 class server():
 
     def __init__(self):
         self.CLIENTS = []
         self.player_names = []
+        self.scores = []
         self.num_categories = 5
         self.categories = ['Movies','Sports','Capital Cities','US History','Artists']
         self.ques_in_categories = 2
@@ -81,6 +83,7 @@ class server():
                     #client.send(data)
                 if('name' in client_message.keys()):
                     self.player_names.append(client_message['name'])
+                    self.scores.append(0)
                 elif('category' in client_message.keys() and (client_message["player_id"] ==  selected_player)):#select category
                     self.SM_CATEGORY['category'] = client_message["category"]
                 elif('ring_player_id' in client_message.keys()):
@@ -92,8 +95,12 @@ class server():
                     
                     #just return answers, correctness can be checked and displayed at client side
                     self.SM_ANSWER["correct_answer"] = correct_answer
-                    self.SM_ANSWER["client_answer"] = client_message["answer"]                    
-
+                    self.SM_ANSWER["client_answer"] = client_message["answer"] 
+                    
+                    #increment scores of a player if correct
+                    if(client_message["answer"]  == correct_answer):
+                        self.scores[client_message["player_id"]] += 10
+        
         # the connection is closed: unregister
         self.CLIENTS.remove(client_socket)
         #client_socket.close() #do we close the socket when the program ends?
@@ -169,9 +176,25 @@ if __name__ == '__main__':
                     s.broadcast(s.SM_ANSWER)
                     state = 6 #end of round
             elif(state == 6): #end of round
-                end_round = {"end" : "END OF ROUND"}
+                end_round = {"scores" : s.scores}
                 s.broadcast(end_round)
-                state = 7
+                rounds = rounds + 1
+                if(rounds<4):
+                    state = 1
+                    #reset the round parameters
+                    selected_player = 0
+                    selected_question = 0
+                    s.SM_CATEGORY = {'category' : -1}
+                    s.SM_RING_CLIENT = {'player_id' : 0}
+                    s.SM_ANSWER = {'correct_answer' : "", 'client_answer' : ""}
+                    s.ring = False                    
+                else:
+                    state = 7
+            elif(state == 7): #end game
+                end_game = {"end" : "END OF GAME"}
+                s.broadcast(end_game)
+                state = 8
+            
         pprint.pprint(s.CLIENTS)
         print(len(s.CLIENTS)) #print out the number of connected clients every 3s        
-        time.sleep(1)
+        time.sleep(2)

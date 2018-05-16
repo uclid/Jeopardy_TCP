@@ -9,7 +9,7 @@ import time, msvcrt
 def readInput( caption, default, timeout = 5):
 
     start_time = time.time()
-    sys.stdout.write('%s:'%(caption))
+    sys.stdout.write('%s'%(caption))
     sys.stdout.flush()
     input = ''
     while True:
@@ -32,6 +32,7 @@ def readInput( caption, default, timeout = 5):
 #vars
 connected = False
 state = 0
+rounds = 1
 SM_NEW_GAME = {}
 player_id = 0
 
@@ -61,6 +62,7 @@ while connected == True:
         state = 1
     elif(state == 1):#round in progress
         #wait for server commands to do things, now we will just display things
+        print("ROUND ", rounds)
         data = client_socket.recv(1024) 
         cmd = json.loads(data.decode()) #we now only expect json
         print("The available categories are {}".format(SM_NEW_GAME["categories"]))
@@ -122,5 +124,19 @@ while connected == True:
     elif(state == 6): #round ended
         data = client_socket.recv(1024)
         cmd = json.loads(data.decode())
+        print("---------------------------------------------------")
+        print("Scores after Round {}".format(rounds))
+        print("---------------------------------------------------")
+        print("{}\t\t\t\t{}".format(SM_NEW_GAME['player_names'][0],SM_NEW_GAME['player_names'][1]))
+        print("{}\t\t\t\t{}".format(cmd["scores"][0],cmd["scores"][1]))
+        print("---------------------------------------------------")
+        rounds = rounds + 1
+        if(rounds<4):
+            state = 1
+        else:
+            state = 7        
+    elif(state == 7): #end game
+        data = client_socket.recv(1024)
+        cmd = json.loads(data.decode())
         print(cmd["end"])
-        state = 7
+        state = 8

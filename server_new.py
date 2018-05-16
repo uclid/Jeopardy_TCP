@@ -24,24 +24,24 @@ class server():
         self.CLIENTS = []
         self.player_names = []
         self.num_categories = 5
-        self.categories = ['Movies','Sportsmen','Capital Cities','US History','Artists']
+        self.categories = ['Movies','Sports','Capital Cities','US History','Artists']
         self.ques_in_categories = 2
         self.questions = [['Best Oscar Movie 2017','Highest Grossing Movie of all time'],
                      ['World Cup 2018 is here','Current NBA Champions'],
                      ['Capital of Nepal','Capital of Bangladesh'],
                      ['The First State','The Last State'],
                      ['Painted Monalisa','Composed Fur Elise']]
-        ''' 
-        answers =
-        [['moonlight','avatar'],
+        
+        self.answers = [['moonlight','avatar'],
         ['russia','golden state warriors'],
         ['kathmandu','dhaka'],
         ['delaware','hawaii'],
         ['da vinci','beethoven']]
-        '''     
+        
         self.def_timeout = 5 #in seconds
         self.SM_CATEGORY = {'category' : -1}
         self.SM_RING_CLIENT = {'player_id' : 0}
+        self.SM_ANSWER = {'correct_answer' : "", 'client_answer' : ""}
         self.ring = False
 
 
@@ -86,9 +86,13 @@ class server():
                 elif('ring_player_id' in client_message.keys()):
                     if(self.ring == False):
                         self.ring = True
-                        print("here")
                         self.SM_RING_CLIENT['player_id'] = client_message["ring_player_id"]
+                elif('answer' in client_message.keys() and (client_message["player_id"] ==  selected_player)):
+                    correct_answer = self.answers[self.SM_CATEGORY["category"]][selected_question]
                     
+                    #just return answers, correctness can be checked and displayed at client side
+                    self.SM_ANSWER["correct_answer"] = correct_answer
+                    self.SM_ANSWER["client_answer"] = client_message["answer"]                    
 
         # the connection is closed: unregister
         self.CLIENTS.remove(client_socket)
@@ -112,7 +116,7 @@ class server():
         # Packs the message with 4 leading bytes representing the message length
         #msg = struct.pack('>I', len(msg)) + msg
         # Sends the packed message
-        sock.send(bytes('{"type": "bet","value": "1"}', 'UTF-8'))
+        sock.send(bytes('{"sample": "test"}', 'UTF-8'))
 
 
 if __name__ == '__main__':
@@ -152,19 +156,21 @@ if __name__ == '__main__':
                 start_time = time.time()             
                 state = 4
             elif(state == 4): #wait for ring
-                if(time.time() - start_time > s.def_timeout):
-                    timeout = {"timeout":1}
-                    s.broadcast(timeout)
-                    state = 6 #timeout, just display answer
-                else:
-                    if(s.SM_RING_CLIENT["player_id"] > 0):
-                        s.broadcast(s.SM_RING_CLIENT)
-                        state = 5 #wait for answer
+                if(s.SM_RING_CLIENT["player_id"] == 100):
+                    s.broadcast(s.SM_RING_CLIENT)
+                    correct_answer = s.answers[s.SM_CATEGORY["category"]][selected_question]
+                    s.SM_ANSWER["correct_answer"] = correct_answer
+                    state = 5 #wait for answer
+                elif(s.SM_RING_CLIENT["player_id"] > 0):
+                    s.broadcast(s.SM_RING_CLIENT)
+                    state = 5 #wait for answer                
             elif(state == 5): #wait for answer
-                xyz = input("Waiting for answer")
-                state = 6
+                if(s.SM_ANSWER["correct_answer"] != ""):
+                    s.broadcast(s.SM_ANSWER)
+                    state = 6 #end of round
             elif(state == 6): #end of round
-                xyz = input("Displaying answer")
+                end_round = {"end" : "END OF ROUND"}
+                s.broadcast(end_round)
                 state = 7
         pprint.pprint(s.CLIENTS)
         print(len(s.CLIENTS)) #print out the number of connected clients every 3s        

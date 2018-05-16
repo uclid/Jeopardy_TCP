@@ -13,6 +13,9 @@ client_list = []
 
 MIN_PLAYERS = 3
 
+game_flag= 0
+round_flag = 0
+
 player_names = []
 num_categories = 5
 categories = ['Movies','Sportsmen','Capital Cities','US History','Artists']
@@ -48,19 +51,12 @@ def handle_client_connection(client_socket):
     while len(player_names) < MIN_PLAYERS:
         #keep waiting until all have input their names
         2==2
-    
-    SM_NEW_GAME = { 'num_players' : num_players,
-                'player_names' : player_names,
-                'num categories' : num_categories,
-                'categories' : categories,
-                'ques_in_categories' : ques_in_categories,
-                'def_timeout' : def_timeout }
-    
-    message = json.dumps(SM_NEW_GAME)
-    client_socket.send(message.encode())
+    if game_flag == 0:
+        broadcast_game(num_players)
     
     #round in progress
-    broadcast_round(client_socket, num_players)
+    if round_flag == 0:
+        broadcast_round(num_players)
     
     #category_selected (wait until a category is picked by the selected player)
     request = client_socket.recv(1024)
@@ -87,14 +83,34 @@ def handle_client_connection(client_socket):
     client_socket.send(b'END')
     client_socket.close()
 
-def broadcast_round(client_socket, num_players):
+def broadcast_game(num_players):
+    SM_NEW_GAME = { 'num_players' : num_players,
+                    'player_names' : player_names,
+                'num categories' : num_categories,
+                'categories' : categories,
+                'ques_in_categories' : ques_in_categories,
+                'def_timeout' : def_timeout }
+
+    message = json.dumps(SM_NEW_GAME)
+    
+    for clients in client_list:
+        send_msg(client, message.encode())
+    game_flag = 1
+
+def broadcast_round(num_players):
     selected_player = random.randint(1,num_players+1)
     SM_NEW_ROUND = {"selected_player" : selected_player}
     
     message = json.dumps(SM_NEW_ROUND)
     
     for clients in client_list:
-        clients.send(message.encode())    
+        clients.send(message.encode())  
+    round_flag = 1
+
+def send_msg(sock, msg):
+    # Prefix each message with a 4-byte length (network byte order)
+    msg = struct.pack('>I', len(msg)) + msg
+    sock.sendall(msg)
 
 def remove(connection):
     if connection in client_list:

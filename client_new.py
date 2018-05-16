@@ -44,24 +44,49 @@ while connected == True:
         print("Each categories have {} questions".format(SM_NEW_GAME["ques_in_categories"]))
         if(cmd["selected_player"] == player_id):
             print("You are selected!!")
-            category = int(input('Please select a category (1,2,3..) in order they are displayed: '))
+            category = int(input('Please select a category (0,1,2..) in order they are displayed: '))
             SM_CATEGORY = {'player_id': player_id,'category': category}
             message = json.dumps(SM_CATEGORY)
             client_socket.send(message.encode())            
         else:
             print("Player {} is selecting a category...".format(cmd["selected_player"]))
         state = 2
-    elif(state == 2):
+    elif(state == 2): #select category
         data = client_socket.recv(1024) 
         #decoded = data.decode()
         #list_message = decoded.split('\n')
         cmd = json.loads(data.decode()) #we now only expect json
         print("Category selected is {}.".format(SM_NEW_GAME["categories"][cmd["category"]]))
         state = 3
-    elif(state == 3):
+    elif(state == 3): #display question and ring
         data = client_socket.recv(1024) 
         #decoded = data.decode()
         #list_message = decoded.split('\n')
         cmd = json.loads(data.decode()) #we now only expect json
         print("Your question is {}.".format([cmd["question"]]))
         ring = int(input("Please press 1 and enter to ring..."))
+        if(ring == 1):
+            SM_RING = {'ring_player_id': player_id}
+            message = json.dumps(SM_RING)
+            client_socket.send(message.encode())
+        else:
+            print("Wrong buzzer press, you missed out")
+        state = 4
+    elif(state == 4):
+        data = client_socket.recv(1024) 
+        #decoded = data.decode()
+        #list_message = decoded.split('\n')
+        cmd = json.loads(data.decode()) #we now only expect json
+        if('player_id' in cmd.keys()):
+            if(cmd["player_id"] == player_id):
+                print("You can answer!!")
+                category = input('Please enter your answer: ')
+                #SM_CATEGORY = {'player_id': player_id,'category': category}
+                #message = json.dumps(SM_CATEGORY)
+                #client_socket.send(message.encode())            
+            else:
+                print("Player {} is answering...".format(cmd["player_id"]))
+                xyz = input("answering...")
+        elif('timeout' in cmd.keys()):
+            print("Timeout, you cannot answer anymore!")
+        state = 5

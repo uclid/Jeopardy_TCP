@@ -60,7 +60,7 @@ class server():
                 print (clientCount)
                 # register client
                 self.CLIENTS.append(client_socket)
-                threading.Thread(target=self.playerHandler, args=(client_socket,)).start()
+                threading.Thread(target=self.clientHandler, args=(client_socket,)).start()
             s.close()
         except socket.error as msg:
             print ('Could Not Start Server Thread. Error Code : ') #+ str(msg[0]) + ' Message ' + msg[1]
@@ -68,7 +68,7 @@ class server():
 
 
    #client handler :one of these loops is running for each thread/player   
-    def playerHandler(self, client_socket):
+    def clientHandler(self, client_socket):
         while 1:
             if(client_state == 0):#collect subscriptions
                 request = client_socket.recv(BUFFER_SIZE)            
@@ -90,7 +90,9 @@ class server():
                     if(self.ring == False):
                         self.ring = True
                         self.SM_RING_CLIENT['player_id'] = client_message["ring_player_id"]
-                elif('answer' in client_message.keys() and (client_message["player_id"] ==  selected_player)):
+                    else:
+                        print("Checking for the other client ", client_message["ring_player_id"])
+                elif('answer' in client_message.keys() and (client_message["player_id"] ==  self.SM_RING_CLIENT['player_id'])):
                     correct_answer = self.answers[self.SM_CATEGORY["category"]][selected_question]
                     
                     #just return answers, correctness can be checked and displayed at client side
@@ -99,7 +101,7 @@ class server():
                     
                     #increment scores of a player if correct
                     if(client_message["answer"]  == correct_answer):
-                        self.scores[client_message["player_id"]] += 10
+                        self.scores[client_message["player_id"]-1] += 10 #id -1 is the idex for a player
         
         # the connection is closed: unregister
         self.CLIENTS.remove(client_socket)
@@ -163,13 +165,11 @@ if __name__ == '__main__':
                 start_time = time.time()             
                 state = 4
             elif(state == 4): #wait for ring
-                if(s.SM_RING_CLIENT["player_id"] == 100):
+                if(s.SM_RING_CLIENT["player_id"] > 0):
                     s.broadcast(s.SM_RING_CLIENT)
-                    correct_answer = s.answers[s.SM_CATEGORY["category"]][selected_question]
-                    s.SM_ANSWER["correct_answer"] = correct_answer
-                    state = 5 #wait for answer
-                elif(s.SM_RING_CLIENT["player_id"] > 0):
-                    s.broadcast(s.SM_RING_CLIENT)
+                    if(s.SM_RING_CLIENT["player_id"] == 100):
+                        correct_answer = s.answers[s.SM_CATEGORY["category"]][selected_question]
+                        s.SM_ANSWER["correct_answer"] = correct_answer                        
                     state = 5 #wait for answer                
             elif(state == 5): #wait for answer
                 if(s.SM_ANSWER["correct_answer"] != ""):

@@ -11,6 +11,8 @@ TCP_PORT = 8888
 BUFFER_SIZE = 1024
 
 clientCount = 0
+state = 0
+client_state = 0
 
 class server():
 
@@ -34,6 +36,7 @@ class server():
         ['da vinci','beethoven']]
         '''     
         self.def_timeout = 5000
+        self.SM_CATEGORY = {'category' : 0}
 
 
     def startServer(self):
@@ -57,22 +60,24 @@ class server():
 
 
    #client handler :one of these loops is running for each thread/player   
-    def playerHandler(self, client_socket):
-        #send welcome msg to new client
-        client_socket.send(bytes('{"Welcome": "Jeopardy"}', 'UTF-8'))        
+    def playerHandler(self, client_socket):     
         while 1:
-            #collect subscriptions
-            request = client_socket.recv(BUFFER_SIZE)            
-            if not request: 
-                break
-            #print ('Data : ' + repr(data) + "\n")
-            #data = data.decode("UTF-8")
-            # broadcast
-            client_message = json.loads(request.decode())
-            #print ('Received {}'.format(client_message['name']))            
-            #for client in self.CLIENTS:
-                #client.send(data)
-            self.player_names.append(client_message['name'])
+            if(client_state == 0):#collect subscriptions
+                request = client_socket.recv(BUFFER_SIZE)            
+                if not request: 
+                    break
+                #print ('Data : ' + repr(data) + "\n")
+                #data = data.decode("UTF-8")
+                # broadcast
+                client_message = json.loads(request.decode())
+                #print ('Received {}'.format(client_message['name']))            
+                #for client in self.CLIENTS:
+                    #client.send(data)
+                if('name' in client_message.keys()):
+                    self.player_names.append(client_message['name'])
+                elif('category' in client_message.keys()):#select category
+                    print("Category ", client_message["category"])
+                    self.SM_CATEGORY['category'] = client_message["category"]                    
 
          # the connection is closed: unregister
         #sself.CLIENTS.remove(client_socket)
@@ -105,16 +110,28 @@ if __name__ == '__main__':
 
     while 1:       
         #s._broadcast()
-        SM_NEW_GAME = { 'num_players' : len(s.CLIENTS),
-                        'player_names' : s.player_names,
-                        'num categories' : s.num_categories,
-                        'categories' : s.categories,
-                        'ques_in_categories' : s.ques_in_categories,
-                        'def_timeout' : s.def_timeout }          
-        s.broadcast(SM_NEW_GAME)
+        if(len(s.player_names) >= 2): #at least two players and we will start
+            if(state == 0):#game in progress
+                SM_NEW_GAME = { 'num_players' : len(s.CLIENTS),
+                                'player_names' : s.player_names,
+                                'num categories' : s.num_categories,
+                                'categories' : s.categories,
+                                'ques_in_categories' : s.ques_in_categories,
+                                'def_timeout' : s.def_timeout }          
+                s.broadcast(SM_NEW_GAME)
+                state = 1
+            elif(state == 1):#round in progress
+                selected_player = random.randint(1,len(s.CLIENTS)+1)
+                if(selected_player >= len(s.CLIENTS)):
+                    selected_player = selected_player -1
+                SM_NEW_ROUND = {"selected_player" : selected_player}
+                s.broadcast(SM_NEW_ROUND)
+                #test = input("Waiting for category here...")
+                state = 2
+            elif(state == 2):
+                if(s.SM_CATEGORY["category"] > 0):
+                    s.broadcast(s.SM_CATEGORY)
+                    state = 3
         pprint.pprint(s.CLIENTS)
-        print(len(s.CLIENTS)) #print out the number of connected clients every 5s
-        selected_player = random.randint(1,len(s.CLIENTS)+1)
-        SM_NEW_ROUND = {"selected_player" : selected_player}
-        s.broadcast(SM_NEW_ROUND)    
-        time.sleep(5)
+        print(len(s.CLIENTS)) #print out the number of connected clients every 5s        
+        time.sleep(3)

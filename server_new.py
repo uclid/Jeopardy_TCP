@@ -13,6 +13,7 @@ BUFFER_SIZE = 1024
 clientCount = 0
 state = 0
 client_state = 0
+selected_player = 0
 
 class server():
 
@@ -75,13 +76,13 @@ class server():
                     #client.send(data)
                 if('name' in client_message.keys()):
                     self.player_names.append(client_message['name'])
-                elif('category' in client_message.keys()):#select category
+                elif('category' in client_message.keys() and (client_message["player_id"] ==  selected_player)):#select category
                     print("Category ", client_message["category"])
-                    self.SM_CATEGORY['category'] = client_message["category"]                    
+                    self.SM_CATEGORY['category'] = client_message["category"]                  
 
-         # the connection is closed: unregister
-        #sself.CLIENTS.remove(client_socket)
-        #client_socket.close() #do we close the socket when the program ends? or for ea client thead?
+        # the connection is closed: unregister
+        sself.CLIENTS.remove(client_socket)
+        #client_socket.close() #do we close the socket when the program ends?
 
     def broadcast(self, message):
         print(message)
@@ -128,10 +129,17 @@ if __name__ == '__main__':
                 s.broadcast(SM_NEW_ROUND)
                 #test = input("Waiting for category here...")
                 state = 2
-            elif(state == 2):
+            elif(state == 2):#category selected
                 if(s.SM_CATEGORY["category"] > 0):
                     s.broadcast(s.SM_CATEGORY)
                     state = 3
+            elif(state == 3):#display question
+                selected_question = random.randint(1,3)
+                if(selected_question >= 3):
+                    selected_question = selected_question -1
+                SM_QUESTION = {"question" : s.questions[s.SM_CATEGORY['category']][selected_question]}
+                s.broadcast(SM_QUESTION)
+                state = 4
         pprint.pprint(s.CLIENTS)
-        print(len(s.CLIENTS)) #print out the number of connected clients every 5s        
+        print(len(s.CLIENTS)) #print out the number of connected clients every 3s        
         time.sleep(3)

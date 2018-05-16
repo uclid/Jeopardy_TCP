@@ -14,6 +14,9 @@ clientCount = 0
 state = 0
 client_state = 0
 selected_player = 0
+selected_question = 0
+start_time = time.time()
+timed_out = 0
 
 class server():
 
@@ -36,8 +39,10 @@ class server():
         ['delaware','hawaii'],
         ['da vinci','beethoven']]
         '''     
-        self.def_timeout = 5000
-        self.SM_CATEGORY = {'category' : 0}
+        self.def_timeout = 5 #in seconds
+        self.SM_CATEGORY = {'category' : -1}
+        self.SM_RING_CLIENT = {'player_id' : 0}
+        self.ring = False
 
 
     def startServer(self):
@@ -61,7 +66,7 @@ class server():
 
 
    #client handler :one of these loops is running for each thread/player   
-    def playerHandler(self, client_socket):     
+    def playerHandler(self, client_socket):
         while 1:
             if(client_state == 0):#collect subscriptions
                 request = client_socket.recv(BUFFER_SIZE)            
@@ -77,11 +82,16 @@ class server():
                 if('name' in client_message.keys()):
                     self.player_names.append(client_message['name'])
                 elif('category' in client_message.keys() and (client_message["player_id"] ==  selected_player)):#select category
-                    print("Category ", client_message["category"])
-                    self.SM_CATEGORY['category'] = client_message["category"]                  
+                    self.SM_CATEGORY['category'] = client_message["category"]
+                elif('ring_player_id' in client_message.keys()):
+                    if(self.ring == False):
+                        self.ring = True
+                        print("here")
+                        self.SM_RING_CLIENT['player_id'] = client_message["ring_player_id"]
+                    
 
         # the connection is closed: unregister
-        sself.CLIENTS.remove(client_socket)
+        self.CLIENTS.remove(client_socket)
         #client_socket.close() #do we close the socket when the program ends?
 
     def broadcast(self, message):
@@ -130,16 +140,32 @@ if __name__ == '__main__':
                 #test = input("Waiting for category here...")
                 state = 2
             elif(state == 2):#category selected
-                if(s.SM_CATEGORY["category"] > 0):
+                if(s.SM_CATEGORY["category"] > -1): #category index begins from 0
                     s.broadcast(s.SM_CATEGORY)
                     state = 3
             elif(state == 3):#display question
-                selected_question = random.randint(1,3)
-                if(selected_question >= 3):
+                selected_question = random.randint(0,2) #question indexes are 0 or 1
+                if(selected_question >= 2):
                     selected_question = selected_question -1
                 SM_QUESTION = {"question" : s.questions[s.SM_CATEGORY['category']][selected_question]}
                 s.broadcast(SM_QUESTION)
+                start_time = time.time()             
                 state = 4
+            elif(state == 4): #wait for ring
+                if(time.time() - start_time > s.def_timeout):
+                    timeout = {"timeout":1}
+                    s.broadcast(timeout)
+                    state = 6 #timeout, just display answer
+                else:
+                    if(s.SM_RING_CLIENT["player_id"] > 0):
+                        s.broadcast(s.SM_RING_CLIENT)
+                        state = 5 #wait for answer
+            elif(state == 5): #wait for answer
+                xyz = input("Waiting for answer")
+                state = 6
+            elif(state == 6): #end of round
+                xyz = input("Displaying answer")
+                state = 7
         pprint.pprint(s.CLIENTS)
         print(len(s.CLIENTS)) #print out the number of connected clients every 3s        
-        time.sleep(3)
+        time.sleep(1)
